@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
 #
 # nixci's client policy: the selection surface for ../lib/clients.nix, and the package-name lists a
 # host's own reconciler consumes. Installs nothing itself.

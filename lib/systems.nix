@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
 #
 # The cluster catalogue: what a continuous-integration platform can run. Five groups, because the
 # platform genuinely contains five kinds of thing and flattening them would make the model lie:

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
 # Asserts what the platform actually RENDERS, by reading the manifests out of the rendered
 # environment with a YAML parser.
 #

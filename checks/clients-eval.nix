@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
 # Evaluates modules/clients.nix for real against `lib.evalModules` and asserts what it resolves,
 # plus the integrity of both catalogues and the direction of the reference between them.
 #

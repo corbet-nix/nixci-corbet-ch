@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
 #
 # NixOS backend for the client catalogue. Here the system IS nix, so installing the clients into
 # `environment.systemPackages` is correct rather than a duplication of a distro package manager.

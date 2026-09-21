@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT OR Apache-2.0
 # Verify every upstream coordinate in ../lib/systems.nix against the registry or chart repository it
 # names -- and, with --tags, show what upstream is actually shipping.
 #

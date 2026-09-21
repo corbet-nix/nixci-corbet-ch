@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
 # The CI framework's own CI.
 #
 # This repository declares how code becomes an artifact for everything else, and until now nothing

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
 #
 # The client catalogue: what a PERSON installs on a host in order to drive this platform.
 #

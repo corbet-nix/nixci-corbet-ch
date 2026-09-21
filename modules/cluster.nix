@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
 #
 # nixci's cluster surface: declare what the continuous-integration platform runs, and render it.
 #

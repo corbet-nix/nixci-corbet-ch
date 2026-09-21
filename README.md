@@ -5,7 +5,7 @@ decides what runs, the runners that execute, and the cache that holds the result
 control plane that holds the credentials and an execution plane where somebody else's code runs.**
 
 It renders no Kubernetes object of its own. Everything expressible as an app is expressed in
-[nixk3s](https://github.com/julian-corbet/nixk3s-corbet-ch)'s app grammar; what this repository adds
+[nixk3s](https://github.com/corbet-nix/nixk3s-corbet-ch)'s app grammar; what this repository adds
 is the one thing that grammar cannot know — what a CI platform *is*, and which of its halves a
 given piece of it belongs to.
 
@@ -274,13 +274,13 @@ claimed.
 ## Related projects
 
 Part of the same independently-usable module family:
-[nixk3s](https://github.com/julian-corbet/nixk3s-corbet-ch) (the app grammar this consumes, and the
+[nixk3s](https://github.com/corbet-nix/nixk3s-corbet-ch) (the app grammar this consumes, and the
 band model its slots answer to),
-[nixdb](https://github.com/julian-corbet/nixdb-corbet-ch) (the database tier — the engine a CI server
+[nixdb](https://github.com/corbet-nix/nixdb-corbet-ch) (the database tier — the engine a CI server
 points at when it outgrows its embedded one, and the repository that owns every database client), and
-[nixapps](https://github.com/julian-corbet/nixapps-corbet-ch) (the ordinary self-hosted applications
+[nixapps](https://github.com/corbet-nix/nixapps-corbet-ch) (the ordinary self-hosted applications
 that ship *from* this platform rather than being part of it).
 
-## License
+## Licence
 
-MIT License &copy; 2026 Julian Corbet
+Outbound licence is `MIT OR Apache-2.0`. See `LICENSE-MIT` and `LICENSE-APACHE`; every source file carries `SPDX-License-Identifier: MIT OR Apache-2.0`.
