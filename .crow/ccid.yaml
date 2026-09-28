@@ -27,7 +27,7 @@ steps:
   - name: selected-checks
     image: bash
     environment:
-      CCID_REVISION: '5dd17e823d889f7d88e80a902c733c258610aa74'
+      CCID_REVISION: '9f9f65f305491ceb146ee31e356eb561af06af9b'
     commands:
       - |
         set -eu
