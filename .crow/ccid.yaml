@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT OR Apache-2.0
-# Replace 0d26838935e59dd3d7bc431decb86b067f150d59 with one verified ccid commit before committing this adapter.
+# ccid verified by Crow build 328; exact native artifact checked by the helper.
 when:
   - event: manual
 skip_clone: true
@@ -27,7 +27,7 @@ steps:
   - name: selected-checks
     image: bash
     environment:
-      CCID_REVISION: '0d26838935e59dd3d7bc431decb86b067f150d59'
+      CCID_REVISION: '5dd17e823d889f7d88e80a902c733c258610aa74'
     commands:
       - |
         set -eu

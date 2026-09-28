@@ -127,7 +127,7 @@ jobs:
         run: |
           set -uo pipefail
 
-          expected="clients-eval cluster-eval cluster-render"
+          expected="clients-eval cluster-eval cluster-render repository-policy"
 
           # --json so the comparison is on parsed values, never on the shape of human-readable
           # output. `--apply builtins.attrNames` forces the attribute names only: the point is

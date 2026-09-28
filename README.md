@@ -24,6 +24,51 @@ model it would not make the dependency go away — it would only make it invisib
 
 Full reasoning: [`studies/a-forge-is-cis-code-hosting-half.md`](studies/a-forge-is-cis-code-hosting-half.md).
 
+## Repository placement
+
+`lib.repositoryPolicy` (also `nixidyModules.repositoryPolicy`) supplies the
+value-only `nixci.delivery` module. It generates the JSON consumed by
+[`ccid forge`](https://github.com/corbet-libs/ccid/blob/main/docs/repository-policy.md).
+The CI declaration selects the primary forge. Repositories declare one or more
+locations, attribute constraints, ordered clone sources and execution fallbacks.
+GitHub, Forgejo, GitLab, Bitbucket and other Git forges use the same policy surface.
+
+```nix
+nixci.delivery = {
+  freeOnly = true;
+  forges.upstream = { kind = "gitlab"; url = "https://git.example.org"; };
+  ci.local = {
+    driver = "crow";
+    forge = "upstream";
+    execution = "owned";
+    capabilities = [ "linux-x86_64" ];
+  };
+  repositories.widget = {
+    ci = "local";
+    visibility = "private";
+    sensitive = true;
+    locations.upstream = "team/subgroup/widget";
+  };
+};
+# config.nixci.delivery.json: validated ccid policy
+# config.nixci.delivery.primaryUrls.widget: runner registration URL
+```
+
+No credentials or provider APIs are involved in evaluation. The module does not
+create repositories or start mirrored CI triggers. Changing a writable primary
+requires a reviewed policy change; execution failover cannot promote it. Free
+hosted execution requires public, nonsensitive source. `freeOnly` defaults to true
+and rejects paid declarations. Collected cqlt evidence remains distinct from
+declared attributes. `checks/repository-policy.nix` covers valid four-forge
+placement and invalid placement, privacy, cost, promotion and coverage inputs;
+the `policy` ccid selector checks its generated JSON with the real runtime.
+
+`nixci.delivery.admission` optionally supplies `memoryReserveMiB` and
+`ioFullAvg10`. Both default to unset. `admissionEnvironment` renders the
+corresponding ccid runtime variables, for a consumer to pass to its worker.
+I/O admission uses Linux **full** PSI over ten seconds, rejects unavailable
+measurements when enabled, and never treats swap occupancy as pressure.
+
 ## The control/execution axis
 
 The defining structure. One question decides everything: **does repo code run here?**

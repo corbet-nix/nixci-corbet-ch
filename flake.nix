@@ -46,6 +46,7 @@
       # own header.
       nixidyModules.nixci = clusterModule;
       nixidyModules.default = clusterModule;
+      nixidyModules.repositoryPolicy = ./modules/repositories.nix;
 
       # The host plane, for the commands a person drives this platform with. Here the system is nix,
       # so the backend installs; on Arch there is nothing to install FROM, so the policy module IS
@@ -59,6 +60,7 @@
       # Policy alone, for a consumer that wants the computed lists and will wire them itself, plus
       # the raw catalogues for inspection without re-reading the files.
       lib.clientsPolicy = ./modules/clients.nix;
+      lib.repositoryPolicy = ./modules/repositories.nix;
       lib.cluster = clusterModule;
       lib.systems = import ./lib/systems.nix { };
       lib.clients = import ./lib/clients.nix { };
@@ -87,6 +89,7 @@
           # `lib.evalModules`: what a selection resolves to on every plane a backend reads, and the
           # tripwire that fires the moment a package is assigned without this file being revisited.
           clients-eval = import ./checks/clients-eval.nix { inherit pkgs; };
+          repository-policy = import ./checks/repository-policy.nix { inherit pkgs; };
 
           # 2. The cluster module's own resolution and every guard it makes, in BOTH directions: an
           # empty platform renders nothing at all, a declared one resolves, and each refusal gets a
