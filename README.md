@@ -63,6 +63,11 @@ declared attributes. `checks/repository-policy.nix` covers valid four-forge
 placement and invalid placement, privacy, cost, promotion and coverage inputs;
 the `policy` ccid selector checks its generated JSON with the real runtime.
 
+`nixosModules.reconciliation` provides opt-in periodic reconciliation of an
+explicit repository and destination allowlist with a pinned ccid binary. See
+[periodic reconciliation](docs/reconciliation.md) for timers, durable reports,
+pacing and runtime credential inputs.
+
 `nixci.delivery.admission` optionally supplies `memoryReserveMiB` and
 `ioFullAvg10`. Both default to unset. `admissionEnvironment` renders the
 corresponding ccid runtime variables, for a consumer to pass to its worker.

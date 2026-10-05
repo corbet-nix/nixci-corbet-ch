@@ -55,6 +55,7 @@
       # that backend and publishes package-name lists for the host's own reconciler.
       nixosModules.nixci = ./modules/nixos.nix;
       nixosModules.default = ./modules/nixos.nix;
+      nixosModules.reconciliation = ./modules/reconciliation.nix;
 
       systemManagerModules.nixci = ./modules/clients.nix;
       systemManagerModules.default = ./modules/clients.nix;
@@ -93,6 +94,7 @@
           # tripwire that fires the moment a package is assigned without this file being revisited.
           clients-eval = import ./checks/clients-eval.nix { inherit pkgs; };
           repository-policy = import ./checks/repository-policy.nix { inherit pkgs; };
+          reconciliation = import ./checks/reconciliation.nix { inherit pkgs; };
 
           # 1b. The Argo module, rendered through the real renderer from examples/argo: the chart
           # fetches (content-hash pinned) and the whole manifest tree must build.
