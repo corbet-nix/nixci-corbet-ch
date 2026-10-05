@@ -47,6 +47,8 @@
       nixidyModules.nixci = clusterModule;
       nixidyModules.default = clusterModule;
       nixidyModules.repositoryPolicy = ./modules/repositories.nix;
+      # Argo Workflows + Argo Events as a forge-agnostic scheduler (vendor charts, pinned).
+      nixidyModules.argo = ./modules/argo.nix;
 
       # The host plane, for the commands a person drives this platform with. Here the system is nix,
       # so the backend installs; on Arch there is nothing to install FROM, so the policy module IS
@@ -62,6 +64,7 @@
       lib.clientsPolicy = ./modules/clients.nix;
       lib.repositoryPolicy = ./modules/repositories.nix;
       lib.cluster = clusterModule;
+      lib.argo = ./modules/argo.nix;
       lib.systems = import ./lib/systems.nix { };
       lib.clients = import ./lib/clients.nix { };
 
@@ -90,6 +93,13 @@
           # tripwire that fires the moment a package is assigned without this file being revisited.
           clients-eval = import ./checks/clients-eval.nix { inherit pkgs; };
           repository-policy = import ./checks/repository-policy.nix { inherit pkgs; };
+
+          # 1b. The Argo module, rendered through the real renderer from examples/argo: the chart
+          # fetches (content-hash pinned) and the whole manifest tree must build.
+          argo-render = (nixidy.lib.mkEnv {
+            inherit pkgs;
+            modules = [ self.nixidyModules.argo ./examples/argo/values.nix ];
+          }).environmentPackage;
 
           # 2. The cluster module's own resolution and every guard it makes, in BOTH directions: an
           # empty platform renders nothing at all, a declared one resolves, and each refusal gets a

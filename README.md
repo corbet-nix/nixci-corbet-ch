@@ -69,6 +69,16 @@ corresponding ccid runtime variables, for a consumer to pass to its worker.
 I/O admission uses Linux **full** PSI over ten seconds, rejects unavailable
 measurements when enabled, and never treats swap occupancy as pressure.
 
+## A forge-agnostic scheduler: Argo
+
+`nixidyModules.argo` (`modules/argo.nix`) declares Argo Workflows and Argo Events as two nixidy
+applications from the vendor Helm charts, pinned by version and content hash. A forge-bound CI
+server needs the forge to start a job; this scheduler does not: templates live in the cluster and
+triggers are cron, generic webhooks or the API. Options live under `nixci.argo` (`workflows.enable`,
+`events.enable`, chart versions and hashes, namespaces, resources, an EventBus in the workflow
+namespace). The argo-server Service is ClusterIP only. `examples/argo/values.nix` is rendered by the
+`argo-render` check.
+
 ## The control/execution axis
 
 The defining structure. One question decides everything: **does repo code run here?**
