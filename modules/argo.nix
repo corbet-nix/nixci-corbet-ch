@@ -96,6 +96,14 @@ in
       chartVersion = mkOption { type = types.str; default = "2.4.27"; description = "argo-events chart version (app v1.9.11)."; };
       chartHash = mkOption { type = types.str; default = "sha256-Ukdoy13K2xDJ/iC2OlB4QJ1feqnpXp+Oxe0acKhGVAo="; };
       resources.controller = mkResources { cpu = "25m"; memory = "64Mi"; } { cpu = "250m"; memory = "256Mi"; };
+      sensorServiceAccountName = mkOption {
+        type = types.str;
+        default = "argo-events-sensor";
+        description = ''
+          ServiceAccount for Sensors in the workflow namespace; it may create and read Workflows
+          there (the workflow ServiceAccount itself deliberately cannot).
+        '';
+      };
       eventBus = {
         enable = mkOption { type = types.bool; default = true; description = "Render an EventBus named `default` in the workflow namespace."; };
         replicas = mkOption { type = types.ints.positive; default = 1; description = "JetStream replicas."; };
@@ -173,7 +181,41 @@ in
         };
 
         # The bus is namespaced to where EventSources and Sensors live, not to the controller.
-        yamls = lib.optionals cfg.events.eventBus.enable [
+        yamls = [
+          ''
+            apiVersion: v1
+            kind: ServiceAccount
+            metadata:
+              name: ${cfg.events.sensorServiceAccountName}
+              namespace: ${cfg.workflowNamespace}
+          ''
+          ''
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: Role
+            metadata:
+              name: ${cfg.events.sensorServiceAccountName}
+              namespace: ${cfg.workflowNamespace}
+            rules:
+              - apiGroups: [argoproj.io]
+                resources: [workflows, workflowtemplates]
+                verbs: [create, get, list, watch]
+          ''
+          ''
+            apiVersion: rbac.authorization.k8s.io/v1
+            kind: RoleBinding
+            metadata:
+              name: ${cfg.events.sensorServiceAccountName}
+              namespace: ${cfg.workflowNamespace}
+            roleRef:
+              apiGroup: rbac.authorization.k8s.io
+              kind: Role
+              name: ${cfg.events.sensorServiceAccountName}
+            subjects:
+              - kind: ServiceAccount
+                name: ${cfg.events.sensorServiceAccountName}
+                namespace: ${cfg.workflowNamespace}
+          ''
+        ] ++ lib.optionals cfg.events.eventBus.enable [
           ''
             apiVersion: argoproj.io/v1alpha1
             kind: EventBus
