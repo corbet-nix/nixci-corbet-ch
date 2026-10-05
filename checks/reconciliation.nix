@@ -27,8 +27,10 @@ let
   };
   enabled = evaluate values;
   service = enabled.systemd.services.ccid-forge-reconcile;
-  valid = config: lib.all (entry: entry.assertion)
-    (lib.filter (entry: lib.hasPrefix "nixci.reconciliation" entry.message) config.assertions);
+  # NixOS assertion messages can refer to failure-only diagnostic attributes.
+  # Keep successful assertions lazy instead of evaluating every message.
+  valid = config: lib.all (entry: entry.assertion
+    || !(lib.hasPrefix "nixci.reconciliation" entry.message)) config.assertions;
   refused = extra: !(valid (evaluate (values // extra)));
   results = [
     (!((evaluate { }).systemd.services ? ccid-forge-reconcile))
