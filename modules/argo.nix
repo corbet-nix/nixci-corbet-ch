@@ -184,6 +184,13 @@ in
               jetstream:
                 version: "${cfg.events.eventBus.jetstreamVersion}"
                 replicas: ${toString cfg.events.eventBus.replicas}
+                # Streams default to 3 replicas, which a smaller bus refuses ("replicas > 1 not
+                # supported in non-clustered mode"), so the stream follows the bus size.
+                streamConfig: |
+                  maxMsgs: 1000000
+                  maxAge: 72h
+                  maxBytes: 1GB
+                  replicas: ${toString cfg.events.eventBus.replicas}
           ''
         ];
       };
