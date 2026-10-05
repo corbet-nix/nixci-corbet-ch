@@ -81,6 +81,15 @@ in
       chartHash = mkOption { type = types.str; default = "sha256-GXNb9Y33Cic5uE8C9qBDNz8n/fJmBF6MszBYq1FxHZo="; };
       serviceAccountName = mkOption { type = types.str; default = "argo-workflow"; description = "ServiceAccount workflows run as, in the workflow namespace."; };
       server.enable = mkOption { type = types.bool; default = true; description = "Run argo-server (ClusterIP, client auth)."; };
+      requeueSeconds = mkOption {
+        type = types.ints.positive;
+        default = 2;
+        description = ''
+          Workflow queue delay in seconds. Two seconds reduces completion latency for short CI
+          jobs; increase toward the upstream default of ten seconds for busy controllers whose
+          informers lag. Must be at least one second to let informer state catch up.
+        '';
+      };
       resources = {
         controller = mkResources { cpu = "50m"; memory = "128Mi"; } { cpu = "500m"; memory = "512Mi"; };
         server = mkResources { cpu = "25m"; memory = "64Mi"; } { cpu = "250m"; memory = "256Mi"; };
@@ -138,6 +147,12 @@ in
                 replicas = 1;
                 workflowNamespaces = [ cfg.workflowNamespace ];
                 resources = cfg.workflows.resources.controller;
+                # Argo v4.1's workflow queue defaults to 10s, which dominates short cached jobs.
+                # Keep the periodic informer resync separate; events drive normal reconciliation.
+                extraEnv = [{
+                  name = "DEFAULT_REQUEUE_TIME";
+                  value = "${toString cfg.workflows.requeueSeconds}s";
+                }];
                 # Workflows submitted without a ServiceAccount run as the dedicated one.
                 workflowDefaults.spec.serviceAccountName = cfg.workflows.serviceAccountName;
               };

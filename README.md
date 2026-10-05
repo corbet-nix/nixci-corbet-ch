@@ -83,6 +83,12 @@ triggers are cron, generic webhooks or the API. Options live under `nixci.argo` 
 `events.enable`, chart versions and hashes, namespaces, resources, an EventBus in the workflow
 namespace). The argo-server Service is ClusterIP only. `examples/argo/values.nix` is rendered by the
 `argo-render` check.
+`workflows.requeueSeconds` defaults to two seconds for short CI jobs. This sets
+`DEFAULT_REQUEUE_TIME`, leaving the controller's periodic informer resync unchanged.
+Increase it toward the upstream ten-second default if informer lag appears under
+load; values below one second are rejected. See the
+[Argo queue implementation](https://github.com/argoproj/argo-workflows/blob/v4.1.4/workflow/controller/rate_limiters.go).
+
 Enable `workflows.jobRunner` to render the `ccid-job` WorkflowTemplate for
 repository jobs whose committed manifest selects Argo. The deployment supplies
 an existing tool environment, source/cache mounts and explicit resource limits;
