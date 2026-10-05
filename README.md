@@ -78,6 +78,11 @@ triggers are cron, generic webhooks or the API. Options live under `nixci.argo` 
 `events.enable`, chart versions and hashes, namespaces, resources, an EventBus in the workflow
 namespace). The argo-server Service is ClusterIP only. `examples/argo/values.nix` is rendered by the
 `argo-render` check.
+Enable `workflows.jobRunner` to render the `ccid-job` WorkflowTemplate for
+repository jobs whose committed manifest selects Argo. The deployment supplies
+an existing tool environment, source/cache mounts and explicit resource limits;
+the template verifies the pinned binary and runs `ccid execute-job` against the
+same staged request used by Crow. See [the runner options](modules/argo-jobs.nix).
 
 ## The control/execution axis
 
