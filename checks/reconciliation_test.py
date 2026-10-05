@@ -63,8 +63,10 @@ sys.exit(0 if complete else 1)
     def report(self, repository):
         return json.loads((self.base / "state" / f"{repository}.json").read_text())
 
-    @patch.object(reconcile.time, "sleep")
-    def test_offline_continues_and_failure_survives_pacing(self, sleep):
+    @patch.object(reconcile, "time", wraps=reconcile.time)
+    def test_offline_continues_and_failure_survives_pacing(self, clock):
+        sleep = clock.sleep
+        sleep.return_value = None
         self.assertEqual(reconcile.run(self.settings), 1)
         commands = [json.loads(line) for line in self.calls.read_text().splitlines()]
         self.assertEqual(len(commands), 2)
@@ -98,8 +100,9 @@ sys.exit(0 if complete else 1)
             self.assertEqual(reconcile.run(self.settings), 75)
         self.assertFalse(self.calls.exists())
 
-    @patch.object(reconcile.time, "sleep")
-    def test_invalid_report_and_interrupted_attempt_remain_pending(self, _sleep):
+    @patch.object(reconcile, "time", wraps=reconcile.time)
+    def test_invalid_report_and_interrupted_attempt_remain_pending(self, clock):
+        clock.sleep.return_value = None
         self.settings["repositories"] = {"invalid": self.settings["repositories"]["online"]}
         self.assertEqual(reconcile.run(self.settings), 1)
         self.assertFalse(self.report("invalid")["complete"])
