@@ -6,23 +6,28 @@ project = "nixci"
 [checks.native]
 kind = "nix"
 mode = "native"
-expected_checks = ["clients-eval", "cluster-eval", "cluster-render", "repository-policy"]
+expected_checks = ["argo-render", "clients-eval", "cluster-eval", "cluster-render", "repository-policy"]
 
 [checks.eval]
 kind = "nix"
 mode = "eval"
-expected_checks = ["clients-eval", "cluster-eval", "cluster-render", "repository-policy"]
+expected_checks = ["argo-render", "clients-eval", "cluster-eval", "cluster-render", "repository-policy"]
 
 [checks.list]
 kind = "nix"
 mode = "list"
-expected_checks = ["clients-eval", "cluster-eval", "cluster-render", "repository-policy"]
+expected_checks = ["argo-render", "clients-eval", "cluster-eval", "cluster-render", "repository-policy"]
 
 [checks.all-systems]
 kind = "nix"
 mode = "all-systems"
-expected_checks = ["clients-eval", "cluster-eval", "cluster-render", "repository-policy"]
+expected_checks = ["argo-render", "clients-eval", "cluster-eval", "cluster-render", "repository-policy"]
 
 [checks.policy]
 kind = "commands"
 commands = [["bash", ".ci/validate-policy.sh"]]
+
+[checks.argo]
+kind = "nix"
+mode = "named"
+checks = ["argo-render"]

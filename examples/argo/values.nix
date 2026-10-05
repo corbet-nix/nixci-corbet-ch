@@ -6,6 +6,14 @@
   nixci.argo = {
     project = "default";
     workflows.enable = true;
+    workflows.jobRunner = {
+      enable = true;
+      image = "alpine:3.22";
+      resources = {
+        requests = { cpu = "1"; memory = "1Gi"; };
+        limits = { cpu = "2"; memory = "2Gi"; };
+      };
+    };
     events.enable = true;
   };
 }
