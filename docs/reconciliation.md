@@ -8,6 +8,8 @@ imports = [ inputs.nixci.nixosModules.reconciliation ];
 nixci.reconciliation = {
   enable = true;
   binary = "/opt/ccid/verified-revision/ccid";
+  binarySha256 = artifact.binary_sha256; # From the verified build receipt.
+  toolRevision = artifact.source_revision;
   user = "replicator"; # Must already be declared by the host.
   repositories.widget = {
     policyFile = "/etc/forge-policies/widget.json";
@@ -38,9 +40,23 @@ An interrupted attempt remains pending. Reports are current observations, not
 an append-only audit log. systemd bounds the entire pass and cleans descendants
 if ccid overruns its own deadline.
 
-Pin the executable by immutable path or set both `binarySha256` (SHA-256 hex) and
+Set both `binarySha256` (SHA-256 hex) and
 `toolRevision` (the expected `ccid source-revision`). The scheduler verifies the
 pair once per pass before any Git request; mismatch leaves repositories pending.
+It hashes a bounded snapshot in a sealed Linux memfd and executes those same
+immutable bytes for revision inspection and every sync. Replacing or modifying
+the original binary after verification cannot change the executed program.
+Keep the promoted artifact and its parent directories administrator-owned.
+
+State directories must be private and owned by the service user; symlinks in
+their path are refused. Locks must be private regular files with one link.
+Reports are read without following symlinks, with a 16 MiB bound, and replaced
+atomically with mode 0600. The service defaults to `memoryMax = "1G"`,
+`scratchSize = "1G"` in a private tmpfs, no swap, 64 tasks and disabled core
+dumps. Oversized repositories remain incomplete instead of exhausting host
+storage. Raise declared bounds deliberately when onboarding a larger repository.
+The service account, its credential readers and policy remain trusted; this
+does not isolate secrets from an already compromised process using that account.
 
 Credentials remain host inputs. Set `environmentFile` to an existing runtime file,
 `gitAskpass` to an existing program, or configure exact HTTPS origins:

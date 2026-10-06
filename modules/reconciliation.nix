@@ -30,8 +30,8 @@ in {
   options.nixci.reconciliation = {
     enable = mkEnableOption "bounded periodic ccid forge reconciliation";
     binary = mkOption { type = absolute; description = "Explicit pinned ccid executable or identity-verifying wrapper. Never downloaded by this module."; };
-    binarySha256 = mkOption { type = types.nullOr (types.strMatching "[0-9a-f]{64}"); default = null; description = "Optional expected executable digest; must be paired with toolRevision."; };
-    toolRevision = mkOption { type = types.nullOr (types.strMatching "[0-9a-f]{40}|[0-9a-f]{64}"); default = null; description = "Expected ccid source-revision, verified before Git requests."; };
+    binarySha256 = mkOption { type = types.strMatching "[0-9a-f]{64}"; description = "Required executable digest; verified sealed bytes are executed without reopening the cache path."; };
+    toolRevision = mkOption { type = types.strMatching "[0-9a-f]{40}|[0-9a-f]{64}"; description = "Expected ccid source-revision, verified before Git requests."; };
     user = mkOption { type = name; description = "Existing account that owns reports and reads externally supplied credentials."; };
     stateDirectory = mkOption { type = name; default = "ccid-forge-reconcile"; description = "systemd StateDirectory name below /var/lib; owned by the configured user."; };
     environmentFile = mkOption { type = types.nullOr absolute; default = null; description = "Optional runtime environment file, not read or copied into the Nix store."; };
@@ -47,6 +47,8 @@ in {
       description = "Optional askpass rules keyed by exact canonical HTTPS origin; incompatible with gitAskpass.";
     };
     tickSeconds = mkOption { type = types.ints.positive; default = 60; description = "Delay between completed scheduler passes; repository intervals still apply."; };
+    memoryMax = mkOption { type = types.str; default = "1G"; description = "Memory bound shared by the scheduler and all Git processes."; };
+    scratchSize = mkOption { type = types.strMatching "[1-9][0-9]*[KMGT]?"; default = "1G"; description = "Private tmpfs limit for disposable Git objects and credential output."; };
     repositories = mkOption {
       default = { };
       type = types.attrsOf (types.submodule {
@@ -64,10 +66,9 @@ in {
   config = mkIf cfg.enable {
     assertions = [
       { assertion = cfg.repositories != { }; message = "nixci.reconciliation requires an explicit repository allowlist"; }
-      { assertion = (cfg.binarySha256 == null) == (cfg.toolRevision == null); message = "nixci.reconciliation binarySha256 and toolRevision must be paired"; }
       { assertion = cfg.credentials == { } || cfg.gitAskpass == null; message = "nixci.reconciliation accepts credentials or gitAskpass, never both"; }
       { assertion = lib.all (origin: builtins.match "https://[A-Za-z0-9.-]+(:[0-9]+)?" origin != null) (lib.attrNames cfg.credentials); message = "nixci.reconciliation credentials require canonical HTTPS origins without paths or userinfo"; }
-      { assertion = lib.all (entry: entry.username != "" && !(lib.hasInfix "\n" entry.username) && entry.passwordCommand != [ ] && lib.all (arg: arg != "") entry.passwordCommand) (lib.attrValues cfg.credentials); message = "nixci.reconciliation credential commands and usernames must be explicit and nonempty"; }
+      { assertion = lib.all (entry: entry.username != "" && !(lib.hasInfix "\n" entry.username) && !(lib.hasInfix "\r" entry.username) && entry.passwordCommand != [ ] && lib.all (arg: arg != "") entry.passwordCommand) (lib.attrValues cfg.credentials); message = "nixci.reconciliation credential commands and usernames must be explicit and nonempty"; }
       { assertion = builtins.hasAttr cfg.user config.users.users; message = "nixci.reconciliation.user must already exist"; }
       { assertion = lib.all (id: builtins.match "[A-Za-z0-9_][A-Za-z0-9_.-]*" id != null) (lib.attrNames cfg.repositories); message = "nixci.reconciliation repository IDs must be plain names"; }
       { assertion = lib.all (entry: entry.destinations != [ ] && lib.unique entry.destinations == entry.destinations) (lib.attrValues cfg.repositories); message = "nixci.reconciliation destinations must be explicit, nonempty and unique"; }
@@ -90,7 +91,20 @@ in {
         TimeoutStartSec = timeout;
         TimeoutStopSec = 15;
         KillMode = "control-group";
-        PrivateTmp = true;
+        # Mount scratch separately: timeouts alone cannot bound hostile packfiles.
+        TemporaryFileSystem = [ "/tmp:rw,nosuid,nodev,size=${cfg.scratchSize},mode=1777" ];
+        MemoryMax = cfg.memoryMax;
+        MemorySwapMax = 0;
+        TasksMax = 64;
+        LimitFSIZE = cfg.scratchSize;
+        LimitCORE = 0;
+        CoredumpFilter = "0x0";
+        ProtectProc = "invisible";
+        RestrictSUIDSGID = true;
+        ProtectKernelTunables = true;
+        ProtectKernelModules = true;
+        ProtectControlGroups = true;
+        PrivateDevices = true;
         NoNewPrivileges = true;
         ProtectSystem = "strict";
         ProtectHome = "read-only";

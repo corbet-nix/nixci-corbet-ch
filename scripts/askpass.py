@@ -4,10 +4,13 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
 from urllib.parse import unquote, urlsplit
 
 
 def answer(rules, prompt):
+    if len(prompt) > 4096 or any(ord(character) < 32 or ord(character) == 127 for character in prompt):
+        return None
     match = re.fullmatch(r"(Username|Password) for '([^'\r\n]+)': ?", prompt)
     if not match:
         return None
@@ -28,11 +31,14 @@ def answer(rules, prompt):
         return username if url.username is None else None
     if url.username is None or unquote(url.username) != username:
         return None
-    result = subprocess.run(rule["passwordCommand"], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                            stderr=subprocess.DEVNULL, timeout=30)
-    if result.returncode:
+    with tempfile.TemporaryFile() as output:
+        result = subprocess.run(rule["passwordCommand"], stdin=subprocess.DEVNULL, stdout=output,
+                                stderr=subprocess.DEVNULL, timeout=30)
+        output.seek(0)
+        raw = output.read(4097)
+    if result.returncode or len(raw) > 4096:
         return None
-    password = result.stdout.decode().rstrip("\r\n")
+    password = raw.decode().rstrip("\r\n")
     return password if password and not any(character in password for character in "\r\n\0") else None
 
 

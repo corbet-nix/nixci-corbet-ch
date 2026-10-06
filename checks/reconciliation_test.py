@@ -4,6 +4,7 @@ import fcntl
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -33,12 +34,12 @@ class Reconciliation(unittest.TestCase):
         self.base = Path(self.directory.name)
         self.calls = self.base / "calls.jsonl"
         self.binary = self.base / "ccid"
-        self.binary.write_text(f"#!{sys.executable}\n" + """
+        self.binary.write_text(f"#!{sys.executable}\nCALLS_PATH = {str(self.calls)!r}\n" + """
 import json, pathlib, sys
 if sys.argv[1:] == ['source-revision']:
     print('a' * 40)
     sys.exit(0)
-with pathlib.Path(__file__).with_name('calls.jsonl').open('a') as out:
+with pathlib.Path(CALLS_PATH).open('a') as out:
     out.write(json.dumps(sys.argv[1:]) + '\\n')
 repository = sys.argv[sys.argv.index('--repository') + 1]
 if repository == 'invalid':
@@ -81,12 +82,12 @@ sys.exit(0 if complete else 1)
 
     def test_verification_refuses_before_git_and_clears_success(self):
         state = self.base / "state"
-        state.mkdir()
+        state.mkdir(mode=0o700)
         reconcile.atomic_json(state / "online.json", {"complete": True})
         self.settings["binary_sha256"] = "0" * 64
         self.assertEqual(reconcile.run(self.settings), 1)
         self.assertFalse(self.calls.exists())
-        self.assertEqual(self.report("online")["reason"], "binary-verification-failed")
+        self.assertEqual(self.report("online")["reason"], "binary-or-state-verification-failed")
         self.settings["binary_sha256"] = hashlib.sha256(self.binary.read_bytes()).hexdigest()
         self.settings["tool_revision"] = "b" * 40
         self.assertEqual(reconcile.run(self.settings), 1)
@@ -94,8 +95,8 @@ sys.exit(0 if complete else 1)
 
     def test_lock_prevents_concurrent_pass(self):
         state = self.base / "state"
-        state.mkdir()
-        with (state / "reconcile.lock").open("a") as lock:
+        state.mkdir(mode=0o700)
+        with reconcile.regular_file(state / "reconcile.lock", os.O_WRONLY | os.O_CREAT) as lock:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             self.assertEqual(reconcile.run(self.settings), 75)
         self.assertFalse(self.calls.exists())
@@ -111,6 +112,79 @@ sys.exit(0 if complete else 1)
         reconcile.atomic_json(self.base / "state" / "invalid.json", report)
         self.assertEqual(reconcile.run(self.settings), 1)
         self.assertEqual(len(self.calls.read_text().splitlines()), 1)
+
+    @patch.object(reconcile, "time", wraps=reconcile.time)
+    def test_binary_path_replacement_cannot_replace_verified_executable(self, clock):
+        clock.sleep.return_value = None
+        original_run = subprocess.run
+        def replace_after_identity(command, **kwargs):
+            result = original_run(command, **kwargs)
+            if command[1:] == ["source-revision"]:
+                replacement = self.base / "replacement"
+                replacement.write_text("#!/bin/sh\nexit 99\n")
+                replacement.chmod(0o700)
+                replacement.replace(self.binary)
+            return result
+        with patch.object(reconcile.subprocess, "run", side_effect=replace_after_identity):
+            self.assertEqual(reconcile.run(self.settings), 1)  # offline remains pending
+        self.assertTrue(self.report("online")["complete"])
+        self.assertEqual(len(self.calls.read_text().splitlines()), 2)
+
+    def test_sealed_snapshot_cannot_be_modified(self):
+        with reconcile.verified_binary(self.settings) as (executable, descriptor):
+            with self.assertRaises(OSError):
+                os.write(descriptor, b"overwrite")
+            with self.assertRaises(OSError):
+                os.truncate(executable, 0)
+
+    def test_state_and_lock_symlinks_hardlinks_and_permissions_fail_closed(self):
+        state = self.base / "state"
+        outside = self.base / "outside"
+        outside.mkdir(mode=0o700)
+        state.symlink_to(outside, target_is_directory=True)
+        self.assertEqual(reconcile.run(self.settings), 1)
+        self.assertEqual(list(outside.iterdir()), [])
+        state.unlink()
+        state.mkdir(mode=0o755)
+        self.assertEqual(reconcile.run(self.settings), 1)
+        self.assertEqual(list(state.iterdir()), [])
+        state.chmod(0o700)
+        victim = outside / "victim"
+        victim.write_text("preserved")
+        victim.chmod(0o600)
+        lock = state / "reconcile.lock"
+        lock.symlink_to(victim)
+        self.assertEqual(reconcile.run(self.settings), 1)
+        lock.unlink()
+        os.link(victim, lock)
+        self.assertEqual(reconcile.run(self.settings), 1)
+        lock.unlink()
+        os.mkfifo(lock, mode=0o600)
+        self.assertEqual(reconcile.run(self.settings), 1)
+        self.assertEqual(victim.read_text(), "preserved")
+        self.assertFalse(self.calls.exists())
+
+    @patch.object(reconcile, "time", wraps=reconcile.time)
+    def test_report_symlink_is_replaced_without_reading_or_overwriting_target(self, clock):
+        clock.sleep.return_value = None
+        state = self.base / "state"
+        state.mkdir(mode=0o700)
+        victim = self.base / "victim"
+        payload = json.dumps({"complete": True, "attempt_started": reconcile.time.time()})
+        victim.write_text(payload)
+        (state / "online.json").symlink_to(victim)
+        self.assertEqual(reconcile.run(self.settings), 1)
+        self.assertTrue(self.report("online")["complete"])
+        self.assertEqual(len(self.calls.read_text().splitlines()), 2)
+        self.assertEqual(victim.read_text(), payload)
+        self.assertEqual((state / "online.json").stat().st_mode & 0o777, 0o600)
+
+    def test_repository_path_traversal_is_refused_before_execution(self):
+        self.settings["repositories"] = {"../escape": self.settings["repositories"]["online"]}
+        self.assertEqual(reconcile.run(self.settings), 1)
+        self.assertFalse((self.base / "escape.json").exists())
+        self.assertFalse(self.calls.exists())
+
 
 
 class Askpass(unittest.TestCase):
@@ -132,6 +206,16 @@ class Askpass(unittest.TestCase):
         self.assertIsNone(askpass.answer(self.rules, "Username for 'https://robot@forge.example': "))
         self.assertIsNone(askpass.answer(self.rules, "arbitrary prompt"))
         command.assert_not_called()
+
+    @patch.object(askpass.subprocess, "run")
+    def test_control_characters_and_oversized_prompts_never_run_command(self, command):
+        for location in ["https://robot@forge.exa\tmple", "https://robot@forge.example/\x00", "https://robot@forge.example/" + "a" * 4096]:
+            self.assertIsNone(askpass.answer(self.rules, f"Password for '{location}': "))
+        command.assert_not_called()
+
+    def test_oversized_credential_output_is_refused(self):
+        self.rules["https://forge.example"]["passwordCommand"] = [sys.executable, "-c", "print('a' * 5000)"]
+        self.assertIsNone(askpass.answer(self.rules, "Password for 'https://robot@forge.example': "))
 
     def test_command_failure_does_not_print_secret(self):
         with tempfile.TemporaryDirectory() as directory:

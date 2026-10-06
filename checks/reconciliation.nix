@@ -17,6 +17,8 @@ let
     enable = true;
     binary = "/opt/ccid/pinned/ccid";
     user = "replicator";
+    binarySha256 = lib.concatStrings (lib.replicate 64 "a");
+    toolRevision = lib.concatStrings (lib.replicate 40 "a");
     repositories.widget = {
       policyFile = "/etc/forge-policy.json";
       destinations = [ "secondary" ];
@@ -41,7 +43,10 @@ let
     (service.serviceConfig.StateDirectoryMode == "0700")
     (enabled.systemd.timers.ccid-forge-reconcile.timerConfig.OnUnitInactiveSec == 60)
     (refused { repositories = { }; })
-    (refused { binarySha256 = lib.concatStrings (lib.replicate 64 "a"); })
+    (service.serviceConfig.LimitCORE == 0)
+    (service.serviceConfig.MemoryMax == "1G")
+    (service.serviceConfig.TasksMax == 64)
+    (service.serviceConfig.TemporaryFileSystem == [ "/tmp:rw,nosuid,nodev,size=1G,mode=1777" ])
     (refused { user = "undeclared-user"; })
     (refused { credentials."https://forge.example/path" = { username = "robot"; passwordCommand = [ "/bin/credential" ]; }; })
     (refused { gitAskpass = "/bin/askpass"; credentials."https://forge.example" = { username = "robot"; passwordCommand = [ "/bin/credential" ]; }; })
