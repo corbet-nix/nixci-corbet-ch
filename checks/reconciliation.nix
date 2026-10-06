@@ -39,6 +39,7 @@ let
     (valid enabled)
     (service.serviceConfig.User == "replicator")
     (service.serviceConfig.KillMode == "control-group")
+    (service.serviceConfig.SuccessExitStatus == [ 75 ])
     (service.serviceConfig.TimeoutStartSec == 185)
     (service.serviceConfig.StateDirectoryMode == "0700")
     (enabled.systemd.timers.ccid-forge-reconcile.timerConfig.OnUnitInactiveSec == 60)

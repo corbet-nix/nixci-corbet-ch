@@ -68,7 +68,7 @@ sys.exit(0 if complete else 1)
     def test_offline_continues_and_failure_survives_pacing(self, clock):
         sleep = clock.sleep
         sleep.return_value = None
-        self.assertEqual(reconcile.run(self.settings), 1)
+        self.assertEqual(reconcile.run(self.settings), 75)
         commands = [json.loads(line) for line in self.calls.read_text().splitlines()]
         self.assertEqual(len(commands), 2)
         self.assertEqual(commands[1], ["forge", "sync", "--policy", "/policy.json", "--repository", "online",
@@ -76,7 +76,7 @@ sys.exit(0 if complete else 1)
         self.assertEqual(self.report("offline")["state"], "pending")
         self.assertTrue(self.report("online")["complete"])
         self.assertEqual(sleep.call_count, 2)
-        self.assertEqual(reconcile.run(self.settings), 1)
+        self.assertEqual(reconcile.run(self.settings), 75)
         self.assertEqual(len(self.calls.read_text().splitlines()), 2)
         self.assertEqual(sleep.call_count, 2)
 
@@ -126,7 +126,7 @@ sys.exit(0 if complete else 1)
                 replacement.replace(self.binary)
             return result
         with patch.object(reconcile.subprocess, "run", side_effect=replace_after_identity):
-            self.assertEqual(reconcile.run(self.settings), 1)  # offline remains pending
+            self.assertEqual(reconcile.run(self.settings), 75)  # offline remains pending
         self.assertTrue(self.report("online")["complete"])
         self.assertEqual(len(self.calls.read_text().splitlines()), 2)
 
@@ -173,7 +173,7 @@ sys.exit(0 if complete else 1)
         payload = json.dumps({"complete": True, "attempt_started": reconcile.time.time()})
         victim.write_text(payload)
         (state / "online.json").symlink_to(victim)
-        self.assertEqual(reconcile.run(self.settings), 1)
+        self.assertEqual(reconcile.run(self.settings), 75)
         self.assertTrue(self.report("online")["complete"])
         self.assertEqual(len(self.calls.read_text().splitlines()), 2)
         self.assertEqual(victim.read_text(), payload)

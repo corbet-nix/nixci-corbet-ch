@@ -152,6 +152,7 @@ def run(settings):
 def reconcile(settings, state, temporary, binary):
     executable, descriptor = binary
     failed = False
+    invalid = False
     for repository, entry in sorted(settings["repositories"].items()):
         report_path = state / f"{repository}.json"
         previous = read_report(report_path)
@@ -159,6 +160,7 @@ def reconcile(settings, state, temporary, binary):
         last_attempt = previous.get("attempt_started", 0)
         if isinstance(last_attempt, (int, float)) and 0 <= started - last_attempt < entry["interval_seconds"]:
             failed |= previous.get("complete") is not True
+            invalid |= previous.get("reason") in {"unavailable-or-invalid-report", "outer-timeout"}
             continue
         record = {"schema": 1, "repository": repository, "attempt_started": started,
                   "complete": False, "state": "pending", "reason": "in-progress"}
@@ -194,11 +196,15 @@ def reconcile(settings, state, temporary, binary):
                 return 1
             except (OSError, ValueError) as error:
                 record.update(reason="unavailable-or-invalid-report", error_type=type(error).__name__)
+                invalid = True
         record["finished_at"] = time.time()
         atomic_json(report_path, record)
         failed |= not record["complete"]
         time.sleep(entry["pause_seconds"])
-    return int(failed)
+    # Offline/divergent replicas are expected scheduled outcomes, not broken
+    # local execution. Preserve nonzero CLI status and incomplete reports while
+    # distinguishing integrity/timeout failures from temporary incompleteness.
+    return 1 if invalid else (75 if failed else 0)
 
 
 if __name__ == "__main__":

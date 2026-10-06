@@ -30,6 +30,13 @@ the configured retry interval. `pauseSeconds` paces attempts, including failures
 No automatic primary promotion, force push, pruning or ref deletion is added.
 ccid refuses divergent refs and missing external LFS/submodule closures.
 
+The scheduler exits 75 for recorded replica incompleteness or lock contention;
+systemd accepts that temporary outcome so an offline forge cannot block a host
+configuration activation. Reports still say incomplete and `ccid forge sync`
+still fails for that scope. Binary/state verification failures, malformed output
+and outer timeouts exit 1 and remain failed system units. Pacing preserves this
+distinction across skipped attempts.
+
 `tickSeconds` defaults to 60. `stateDirectory` defaults to the name
 `ccid-forge-reconcile` below `/var/lib`; the service user owns it with mode 0700.
 Each `<repository>.json` is atomically replaced and fsynced before and after an

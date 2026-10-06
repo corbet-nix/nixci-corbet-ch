@@ -83,6 +83,9 @@ in {
         // lib.optionalAttrs (cfg.credentials != { }) { GIT_ASKPASS = toString askpass; };
       serviceConfig = {
         Type = "oneshot";
+        # A recorded pending replica must not make unrelated host activation
+        # fail. Binary/state verification and invalid output still exit 1.
+        SuccessExitStatus = [ 75 ];
         User = cfg.user;
         StateDirectory = cfg.stateDirectory;
         StateDirectoryMode = "0700";
