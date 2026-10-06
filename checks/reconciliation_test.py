@@ -107,10 +107,11 @@ sys.exit(0 if complete else 1)
         self.settings["repositories"] = {"invalid": self.settings["repositories"]["online"]}
         self.assertEqual(reconcile.run(self.settings), 1)
         self.assertFalse(self.report("invalid")["complete"])
+        self.assertEqual(reconcile.run(self.settings), 1)  # Invalid output stays fatal while paced.
         report = self.report("invalid")
         report["reason"] = "in-progress"
         reconcile.atomic_json(self.base / "state" / "invalid.json", report)
-        self.assertEqual(reconcile.run(self.settings), 1)
+        self.assertEqual(reconcile.run(self.settings), 75)
         self.assertEqual(len(self.calls.read_text().splitlines()), 1)
 
     @patch.object(reconcile, "time", wraps=reconcile.time)
